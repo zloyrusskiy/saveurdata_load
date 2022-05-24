@@ -12,7 +12,7 @@ DB = Sequel.connect(
   "postgres://#{ENV['POSTGRES_USER']}:#{ENV['POSTGRES_PASSWORD']}@localhost:5432/#{DB_NAME}",
   max_connections: 75,
   sslmode: 'disable',
-  logger: Logger.new('logs/db.log'))
+  logger: Logger.new('logs/db.log', level: Logger::ERROR))
 
 filepath = (0..99)
              .map { |part| "%.02d" % part }
@@ -20,7 +20,7 @@ filepath = (0..99)
 
 (0..99)
   .sort_by { |n|
-    if n == 79 then
+    if n == 79
       -1
     else
       n
@@ -49,6 +49,10 @@ filepath = (0..99)
       rescue RestClient::NotFound => e
         http_status = 404
         puts "got rest client error #{e.inspect} for #{full_fp}"
+      rescue StandardError, RuntimeError => e
+        puts "got error #{e.inspect}, waiting and retrying"
+        sleep 5 * 60 # 5 minutes
+        retry
       end
 
       DB[:saveurdata_load_status].insert(phone_prefix: phone_prefix, http_status: http_status)
